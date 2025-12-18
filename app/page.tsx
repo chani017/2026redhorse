@@ -703,7 +703,7 @@ export default function Home() {
         playsInline
       />
       <Canvas
-        camera={{ position: [0, 0, 15], fov: 25 }}
+        camera={{ position: [0, 0, 18], fov: 25 }}
         style={{ width: "100vw", height: "100vh" }}
       >
         <ambientLight intensity={0.5} />
