@@ -22,6 +22,14 @@ function Disk({ videoRef }: DiskProps) {
   // 1.0 = 원본, 0.0 = 흑백, >1.0 = 채도 증가
   const SATURATION = 2;
   
+  // 대비 값 조절 (여기서 수치를 변경하세요)
+  // 1.0 = 원본, >1.0 = 대비 증가, <1.0 = 대비 감소
+  const CONTRAST = 1.0;
+  
+  // 색조 값 조절 (여기서 수치를 변경하세요)
+  // 0.0 = 원본, 양수/음수 = 색조 회전 (도 단위, -180 ~ 180)
+  const HUE = -5.0;
+  
   // 확대/축소 최소/최대값
   const MIN_SCALE = 0.5;
   const MAX_SCALE = 3.0;
@@ -145,10 +153,16 @@ function Disk({ videoRef }: DiskProps) {
         const material = topFaceRef.current.material as MeshStandardMaterial;
         material.map = texture;
         
-        // 채도 조절을 위한 셰이더 수정
+        // 채도, 대비, 색조 조절을 위한 셰이더 수정
         material.onBeforeCompile = (shader) => {
           if (!shader.uniforms.saturation) {
             shader.uniforms.saturation = { value: SATURATION };
+          }
+          if (!shader.uniforms.contrast) {
+            shader.uniforms.contrast = { value: CONTRAST };
+          }
+          if (!shader.uniforms.hue) {
+            shader.uniforms.hue = { value: HUE };
           }
           
           shader.fragmentShader = shader.fragmentShader.replace(
@@ -156,6 +170,26 @@ function Disk({ videoRef }: DiskProps) {
             `
             #include <common>
             uniform float saturation;
+            uniform float contrast;
+            uniform float hue;
+            
+            // RGB to HSV 변환
+            vec3 rgb2hsv(vec3 c) {
+              vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+              vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+              vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+              
+              float d = q.x - min(q.w, q.y);
+              float e = 1.0e-10;
+              return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+            }
+            
+            // HSV to RGB 변환
+            vec3 hsv2rgb(vec3 c) {
+              vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+              vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+              return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+            }
             `
           );
           
@@ -163,6 +197,14 @@ function Disk({ videoRef }: DiskProps) {
             '#include <color_fragment>',
             `
             #include <color_fragment>
+            
+            // 대비 조절
+            diffuseColor.rgb = (diffuseColor.rgb - vec3(0.5)) * contrast + vec3(0.5);
+            
+            // 색조 조절 (RGB -> HSV -> Hue 조절 -> RGB)
+            vec3 hsv = rgb2hsv(diffuseColor.rgb);
+            hsv.x = mod(hsv.x + hue / 360.0, 1.0);
+            diffuseColor.rgb = hsv2rgb(hsv);
             
             // 채도 조절
             float gray = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
@@ -199,7 +241,7 @@ function Disk({ videoRef }: DiskProps) {
         textureRef.current.dispose();
       }
     };
-  }, [videoRef]);
+  }, [videoRef, SATURATION, CONTRAST, HUE]);
 
   // 하단 이미지 텍스처 설정
   useEffect(() => {
@@ -229,10 +271,13 @@ function Disk({ videoRef }: DiskProps) {
           const material = bottomFaceRef.current.material as MeshStandardMaterial;
           material.map = texture;
           
-          // 채도 조절을 위한 셰이더 수정
+          // 채도 및 대비 조절을 위한 셰이더 수정 (색조는 상단면에만 적용)
           material.onBeforeCompile = (shader) => {
             if (!shader.uniforms.saturation) {
               shader.uniforms.saturation = { value: SATURATION };
+            }
+            if (!shader.uniforms.contrast) {
+              shader.uniforms.contrast = { value: CONTRAST };
             }
             
             shader.fragmentShader = shader.fragmentShader.replace(
@@ -240,6 +285,7 @@ function Disk({ videoRef }: DiskProps) {
               `
               #include <common>
               uniform float saturation;
+              uniform float contrast;
               `
             );
             
@@ -247,6 +293,9 @@ function Disk({ videoRef }: DiskProps) {
               '#include <color_fragment>',
               `
               #include <color_fragment>
+              
+              // 대비 조절
+              diffuseColor.rgb = (diffuseColor.rgb - vec3(0.5)) * contrast + vec3(0.5);
               
               // 채도 조절
               float gray = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
@@ -269,7 +318,7 @@ function Disk({ videoRef }: DiskProps) {
         textureBackRef.current.dispose();
       }
     };
-  }, []);
+  }, [SATURATION, CONTRAST]);
 
   // 확대/축소 이벤트 리스너
   useEffect(() => {
@@ -410,6 +459,23 @@ function Disk({ videoRef }: DiskProps) {
       >
         <ringGeometry args={[0.062, 2, 128]} /> {/* 내부 반지름 0.062 (작은 구멍), 외부 반지름 2 */}
         <meshStandardMaterial 
+          side={DoubleSide} // 양면 모두 표시
+        />
+      </mesh>
+      {/* 구멍 내부 터널 벽 - 작은 실린더로 구멍의 내부 벽면을 채움 (위아래 면은 투명) */}
+      <mesh position={[0, 0, 0]}>
+        <cylinderGeometry 
+          args={[
+            0.062,  // 상단 반지름 (구멍 반지름과 동일)
+            0.062,  // 하단 반지름 (구멍 반지름과 동일)
+            0.05,   // 높이 (원기둥의 두께와 동일)
+            128,    // 세그먼트 수
+            1,      // heightSegments
+            true    // openEnded: true (상단과 하단 면을 열어서 투명하게)
+          ]} 
+        />
+        <meshStandardMaterial 
+          color="#f7eeee" 
           side={DoubleSide} // 양면 모두 표시
         />
       </mesh>
