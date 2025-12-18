@@ -691,7 +691,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[red]">
+    <div className="flex min-h-screen items-center justify-center bg-[#f10000]">
       {/* 비디오 요소를 Canvas 밖에 배치 */}
       <video
         ref={videoRef}
