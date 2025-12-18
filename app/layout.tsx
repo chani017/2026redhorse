@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "2026 redhorse by dachan",
   description: "2026 redhorse by dachan",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
