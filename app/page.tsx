@@ -42,9 +42,9 @@ function Disk({ videoRef }: DiskProps) {
     if (groupRef.current) {
       // 기본값: 원하는 각도로 수정하세요
       groupRef.current.rotation.set(
-        80,  // x축 회전 (라디안)
-        3,  // y축 회전 (라디안)
-        90   // z축 회전 (라디안)
+        0.91,  // x축 회전 (라디안)
+        0.11,  // y축 회전 (라디안)
+        0.35   // z축 회전 (라디안)
       );
       // 초기 scale 설정
       groupRef.current.scale.set(scaleRef.current, scaleRef.current, scaleRef.current);
@@ -427,7 +427,7 @@ function Disk({ videoRef }: DiskProps) {
   }, []);
 
   return (
-    <group ref={groupRef}>
+    <group ref={groupRef} position={[0, 0.2, 0]}>
       {/* 원기둥 본체 (측면과 하단만 표시, 상단은 투명) */}
       <mesh ref={meshRef}>
         <cylinderGeometry 
@@ -490,6 +490,7 @@ function RotationControls() {
   const diskRef = useRef<Object3D | null>(null);
   const cameraRef = useRef<Camera | null>(null);
   const sizeRef = useRef({ width: 0, height: 0 });
+  const activePointersRef = useRef<Set<number>>(new Set()); // 활성 포인터 ID 추적
   const { camera, size, scene } = useThree();
 
   // 관성 효과 강도 조절 (여기서 수치를 변경하세요)
@@ -546,12 +547,28 @@ function RotationControls() {
   // 전역 이벤트 리스너 등록
   useEffect(() => {
     const handleGlobalPointerDown = (e: PointerEvent) => {
-      isDraggingRef.current = true;
-      previousMousePositionRef.current = { x: e.clientX, y: e.clientY };
-      rotationVelocity.current.set(0, 0, 0);
+      // 활성 포인터 추가
+      activePointersRef.current.add(e.pointerId);
+      
+      // 단일 터치일 때만 회전 활성화 (두 개 이상의 터치 포인트가 있으면 회전 비활성화)
+      if (activePointersRef.current.size === 1) {
+        isDraggingRef.current = true;
+        previousMousePositionRef.current = { x: e.clientX, y: e.clientY };
+        rotationVelocity.current.set(0, 0, 0);
+      } else {
+        // 두 개 이상의 터치 포인트가 있으면 회전 비활성화
+        isDraggingRef.current = false;
+        rotationVelocity.current.set(0, 0, 0);
+      }
     };
 
     const handleGlobalPointerMove = (e: PointerEvent) => {
+      // 단일 터치일 때만 회전 처리
+      if (activePointersRef.current.size !== 1) {
+        isDraggingRef.current = false;
+        return;
+      }
+      
       if (!isDraggingRef.current || !diskRef.current || !cameraRef.current) return;
 
       const deltaX = (e.clientX - previousMousePositionRef.current.x) / sizeRef.current.width;
@@ -588,18 +605,45 @@ function RotationControls() {
       previousMousePositionRef.current = { x: e.clientX, y: e.clientY };
     };
 
-    const handleGlobalPointerUp = () => {
-      isDraggingRef.current = false;
+    const handleGlobalPointerUp = (e: PointerEvent) => {
+      // 활성 포인터 제거
+      activePointersRef.current.delete(e.pointerId);
+      
+      // 모든 포인터가 제거되면 회전 비활성화
+      if (activePointersRef.current.size === 0) {
+        isDraggingRef.current = false;
+      } else if (activePointersRef.current.size === 1) {
+        // 다시 단일 터치가 되면 회전 활성화 (하지만 드래그는 시작하지 않음)
+        // 다음 pointerdown에서 활성화됨
+        isDraggingRef.current = false;
+      } else {
+        // 여전히 두 개 이상의 터치 포인트가 있으면 회전 비활성화
+        isDraggingRef.current = false;
+      }
+    };
+    
+    const handleGlobalPointerCancel = (e: PointerEvent) => {
+      // 포인터 취소 시에도 동일하게 처리
+      activePointersRef.current.delete(e.pointerId);
+      if (activePointersRef.current.size === 0) {
+        isDraggingRef.current = false;
+      } else if (activePointersRef.current.size === 1) {
+        isDraggingRef.current = false;
+      } else {
+        isDraggingRef.current = false;
+      }
     };
 
     window.addEventListener("pointerdown", handleGlobalPointerDown);
     window.addEventListener("pointermove", handleGlobalPointerMove);
     window.addEventListener("pointerup", handleGlobalPointerUp);
+    window.addEventListener("pointercancel", handleGlobalPointerCancel);
 
     return () => {
       window.removeEventListener("pointerdown", handleGlobalPointerDown);
       window.removeEventListener("pointermove", handleGlobalPointerMove);
       window.removeEventListener("pointerup", handleGlobalPointerUp);
+      window.removeEventListener("pointercancel", handleGlobalPointerCancel);
     };
   }, []);
 
@@ -651,7 +695,7 @@ export default function Home() {
       {/* 비디오 요소를 Canvas 밖에 배치 */}
       <video
         ref={videoRef}
-        src={`https://stream.mux.com/Kj11gHrgB6Ce7UkReTa01Ur8FRZSnE2c01lx4oqm2mJoE.m3u8`} // Mux 비디오 스트리밍 URL (HLS)
+        src={`https://stream.mux.com/xQtxxKOx6bKL00GVU02dfY100L3t0000Lzuser9o4khqGunM.m3u8`} // Mux 비디오 스트리밍 URL (HLS)
         style={{ display: "none" }}
         crossOrigin="anonymous"
         loop
@@ -663,7 +707,7 @@ export default function Home() {
         style={{ width: "100vw", height: "100vh" }}
       >
         <ambientLight intensity={0.5} />
-        <directionalLight position={[5, 2, 5]} intensity={1} />
+        <directionalLight position={[0, 3, 5]} intensity={1} />
         <Disk videoRef={videoRef} />
         <RotationControls />
       </Canvas>
