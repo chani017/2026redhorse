@@ -706,7 +706,7 @@ export default function Home() {
         camera={{ position: [0, 0, 18], fov: 25 }}
         style={{ width: "100vw", height: "100vh" }}
       >
-        <ambientLight intensity={0.8} />
+        <ambientLight intensity={1} />
         <directionalLight position={[0, 3, 5]} intensity={1} />
         <Disk videoRef={videoRef} />
         <RotationControls />
