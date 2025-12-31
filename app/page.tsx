@@ -9,7 +9,7 @@ interface DiskProps {
   videoRef: React.RefObject<HTMLVideoElement | null>;
 }
 
-function Disk({ videoRef }: DiskProps) {
+function Disk({ videoRef }: DiskProps) {c
   const groupRef = useRef<Group>(null);
   const meshRef = useRef<Mesh>(null);
   const topFaceRef = useRef<Mesh>(null);
