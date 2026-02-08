@@ -15,7 +15,7 @@ export default function Home() {
   usePreventScroll();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#000000]">
+    <div className="fixed inset-0 flex items-center justify-center bg-[#000000]">
       <video
         ref={videoRef}
         src={MUX_URL}
@@ -27,7 +27,7 @@ export default function Home() {
       />
       <Canvas
         camera={{ position: [0, 0, 18], fov: 25 }}
-        style={{ width: "100vw", height: "100vh" }}
+        style={{ width: "100%", height: "100%" }}
       >
         <ambientLight intensity={1} />
         <directionalLight position={[0, 3, 5]} intensity={0.6} />

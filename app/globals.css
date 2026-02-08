@@ -2,7 +2,7 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #000000;
 }
 
 @theme inline {
@@ -14,18 +14,18 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #171717;
+    --background: #000000;
     --foreground: #ededed;
   }
 }
 
+html,
 body {
-  background: var(--background);
+  background: #000000;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-  overflow: hidden; /* 스크롤 방지 */
-}
-
-html {
-  overflow: hidden; /* 스크롤 방지 */
+  overflow: hidden;
+  height: 100%;
+  /* iOS safe-area 여백도 검정으로 채우기 */
+  -webkit-overflow-scrolling: touch;
 }
