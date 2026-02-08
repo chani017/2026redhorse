@@ -18,8 +18,8 @@ interface DiskProps {
 }
 
 const SATURATION = 1.1;
-const CONTRAST = 1.8;
-const HUE = -6.0;
+const CONTRAST = 2;
+const HUE = -5.0;
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 3.0;
 const ZOOM_SPEED = 0.1;
